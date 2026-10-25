@@ -115,20 +115,31 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         notifyDataSetChanged();
     }
 
+    private boolean isFullScreen = false;
+
+    public void setFullScreen(boolean fullScreen) {
+        this.isFullScreen = fullScreen;
+    }
+
+    public boolean isFullScreen() {
+        return isFullScreen;
+    }
+
     @NonNull
     @Override
     public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_app, parent, false);
-        return new Holder(v, listener);
+        return new Holder(v, listener, dockSize);
     }
 
     @Override
     public void onBindViewHolder(@NonNull Holder h, int position) {
         Entry e = items.get(position);
         h.name.setText(e.label);
-        h.name.setVisibility(position < dockSize ? View.INVISIBLE : View.VISIBLE);   // the dock has no labels
+        h.name.setVisibility(position < dockSize ? View.GONE : View.VISIBLE);   // dock apps never have labels
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
-        h.name.setAlpha(focused ? 1f : 0f);
+        h.name.setAlpha(focused && position >= dockSize ? 1f : 0f);
+        h.itemView.setAlpha(position >= dockSize ? (isFullScreen ? 1f : 0f) : 1f);
         h.card.setScaleX(focused ? FOCUS_SCALE : 1f);
         h.card.setScaleY(focused ? FOCUS_SCALE : 1f);
         if (e.banner != null) {
@@ -253,7 +264,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         final TextView label;
         final TextView name;
 
-        Holder(View v, TileListener listener) {
+        Holder(View v, TileListener listener, int dockSize) {
             super(v);
             card = v.findViewById(R.id.card);
             banner = v.findViewById(R.id.banner);
@@ -284,10 +295,15 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
                         .setDuration(focused ? 260 : 180)
                         .setInterpolator(new OvershootInterpolator(focused ? 1.6f : 0f))
                         .start();
-                name.animate().alpha(focused ? 1f : 0f)
-                        .translationY(focused ? density * 4f : -density * 6f)
-                        .setDuration(220).start();
                 int pos = getBindingAdapterPosition();
+                if (pos >= dockSize) {
+                    name.setVisibility(View.VISIBLE);
+                    name.animate().alpha(focused ? 1f : 0f)
+                            .translationY(focused ? density * 4f : -density * 6f)
+                            .setDuration(220).start();
+                } else {
+                    name.setVisibility(View.GONE);
+                }
                 if (focused && listener != null && pos != RecyclerView.NO_POSITION) {
                     listener.onTileFocused(pos, view);
                 }

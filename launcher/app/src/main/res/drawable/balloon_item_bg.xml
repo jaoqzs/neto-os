@@ -1,0 +1,23 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Focused state: Pure glowing white -->
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFFFF" />
+            <corners android:radius="13dp" />
+        </shape>
+    </item>
+    <!-- Pressed state -->
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="#E0FFFFFF" />
+            <corners android:radius="13dp" />
+        </shape>
+    </item>
+    <!-- Resting state: Figma rgba(0,0,0,0.5) glass tile -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#80000000" />
+            <corners android:radius="13dp" />
+        </shape>
+    </item>
+</selector>

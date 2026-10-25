@@ -5,27 +5,43 @@
     android:layout_height="match_parent"
     android:background="#FF000000">
 
-    <!-- Ambient glow in the colour of the focused dock app. -->
-    <View
-        android:id="@+id/ambient"
+    <!-- Custom Wallpaper -->
+    <ImageView
+        android:id="@+id/wallpaper"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:alpha="0" />
+        android:src="@drawable/wallpaper_custom"
+        android:scaleType="centerCrop" />
 
-    <!-- Top shelf: the focused dock app's name, positioned above the dock in code. -->
-    <TextView
-        android:id="@+id/heroName"
+    <!-- Full screen hint (Apple TV style: Chevron + "Swipe up for full screen") -->
+    <LinearLayout
+        android:id="@+id/fullScreenHint"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="68dp"
-        android:alpha="0"
-        android:textColor="#FFFFFFFF"
-        android:textSize="48sp"
-        android:fontFamily="@font/outfit"
-        android:fontVariationSettings="'wght' 300"
-        android:letterSpacing="-0.02"
-        android:includeFontPadding="false"
-        android:singleLine="true" />
+        android:layout_gravity="center_horizontal|bottom"
+        android:layout_marginBottom="200dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="8dp"
+            android:src="@drawable/ic_chevron_up"
+            android:tint="#D0FFFFFF" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:text="Swipe up for full screen"
+            android:textColor="#D0FFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:shadowColor="#99000000"
+            android:shadowDx="0"
+            android:shadowDy="1"
+            android:shadowRadius="4" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -33,125 +49,131 @@
         android:orientation="vertical"
         android:paddingStart="56dp"
         android:paddingEnd="56dp"
-        android:paddingTop="26dp">
+        android:paddingTop="22dp">
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
+            <!-- Top Right Apple TV Style Unified Capsule Bar -->
             <LinearLayout
-                android:id="@+id/leftBlock"
+                android:id="@+id/topCapsuleBar"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/greeting"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
-                    android:textColor="#8CFFFFFF"
-                    android:textSize="12sp"
-                    android:fontFamily="@font/outfit"
-                    android:fontVariationSettings="'wght' 500"
-                    android:letterSpacing="0.22"
-                    android:textAllCaps="true" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:baselineAligned="true">
-
-                    <TextClock
-                        android:id="@+id/clock"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:format12Hour="h:mm"
-                        android:format24Hour="HH:mm"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="52sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 300"
-                        android:letterSpacing="-0.04"
-                        android:includeFontPadding="false" />
-
-                    <TextClock
-                        android:id="@+id/ampm"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        android:layout_gravity="bottom"
-                        android:layout_marginBottom="8dp"
-                        android:format12Hour="a"
-                        android:format24Hour=""
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="15sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 500"
-                        android:letterSpacing="0.08"
-                        android:textAllCaps="true" />
-
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="26dp"
-                        android:layout_gravity="bottom"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp"
-                        android:layout_marginBottom="8dp"
-                        android:background="#33FFFFFF" />
-
-                    <TextClock
-                        android:id="@+id/date"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="bottom"
-                        android:layout_marginBottom="9dp"
-                        android:format12Hour="@string/date_format"
-                        android:format24Hour="@string/date_format"
-                        android:textColor="#A6FFFFFF"
-                        android:textSize="14sp"
-                        android:fontFamily="@font/outfit"
-                        android:fontVariationSettings="'wght' 400"
-                        android:letterSpacing="0.14"
-                        android:textAllCaps="true" />
-                </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/topButtons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_height="44dp"
                 android:layout_alignParentEnd="true"
-                android:layout_alignBottom="@id/leftBlock"
-                android:layout_marginBottom="6dp"
+                android:layout_alignParentTop="true"
+                android:paddingStart="16dp"
+                android:paddingEnd="8dp"
+                android:gravity="center_vertical"
+                android:background="@drawable/capsule_bar_bg"
                 android:orientation="horizontal">
 
+                <!-- 1. Time -->
                 <TextView
-                    android:id="@+id/btnInputs"
-                    style="@style/TopButton"
-                    android:text="@string/inputs"
-                    android:drawableStart="@drawable/ic_input"
-                    android:nextFocusDown="@+id/grid" />
+                    android:id="@+id/capsuleClock"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
 
+                <!-- Dot Divider -->
                 <TextView
-                    android:id="@+id/btnWifi"
-                    style="@style/TopButton"
-                    android:text="@string/wifi"
-                    android:drawableStart="@drawable/ic_wifi"
-                    android:nextFocusDown="@+id/grid" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="•"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="12sp" />
 
+                <!-- 2. Date -->
                 <TextView
-                    android:id="@+id/btnSettings"
-                    style="@style/TopButton"
-                    android:text="@string/settings"
-                    android:drawableStart="@drawable/ic_settings"
-                    android:nextFocusDown="@+id/grid" />
+                    android:id="@+id/capsuleDate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="#CCFFFFFF"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium" />
+
+                <!-- Vertical Bar Divider -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="#33FFFFFF" />
+
+                <!-- 3. Control Center Toggle Button -->
+                <FrameLayout
+                    android:id="@+id/btnControlCenterToggle"
+                    android:layout_width="38dp"
+                    android:layout_height="28dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/capsule_tab_toggle_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusRight="@+id/btnProfileAvatar"
+                    android:nextFocusDown="@+id/grid">
+
+                    <ImageView
+                        android:id="@+id/iconToggle"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_cc_toggle"
+                        android:tint="@drawable/capsule_icon_tint"
+                        android:duplicateParentState="true" />
+                </FrameLayout>
+
+                <!-- Vertical Bar Divider -->
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="#33FFFFFF" />
+
+                <!-- 4. User Greeting ("Olá, João") -->
+                <TextView
+                    android:id="@+id/capsuleUserName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="10dp"
+                    android:text="Olá, João"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+                <!-- 5. Profile Avatar Button -->
+                <FrameLayout
+                    android:id="@+id/btnProfileAvatar"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusLeft="@+id/btnControlCenterToggle"
+                    android:nextFocusDown="@+id/grid">
+
+                    <ImageView
+                        android:id="@+id/pillAvatar"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/avatar_user"
+                        android:scaleType="centerCrop" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/avatar_border" />
+                </FrameLayout>
             </LinearLayout>
         </RelativeLayout>
 
-        <!-- The wrapper clips at the grid's edge; the grid itself must not clip so scaled tiles can overflow their cells. -->
+        <!-- Grid of apps -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -162,7 +184,7 @@
                 android:id="@+id/grid"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingTop="10dp"
+                android:paddingTop="16dp"
                 android:paddingBottom="40dp"
                 android:clipToPadding="false"
                 android:clipChildren="false"
@@ -172,11 +194,625 @@
         </FrameLayout>
     </LinearLayout>
 
-    <!-- The single floating glass highlight that springs between tiles. -->
-    <com.gathin.tvhome.GlassView
-        android:id="@+id/glass"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
+
+
+    <!-- Scrim / Dimmer overlay for Control Center -->
+    <View
+        android:id="@+id/ccScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#45000000"
+        android:visibility="gone"
         android:alpha="0"
-        android:importantForAccessibility="no" />
+        android:clickable="true"
+        android:focusable="false" />
+
+    <!-- Control Center Balloon Panel (Directly under the top capsule!) -->
+    <LinearLayout
+        android:id="@+id/controlCenterPanel"
+        android:layout_width="319dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="72dp"
+        android:layout_marginEnd="56dp"
+        android:paddingStart="13dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="13dp"
+        android:paddingBottom="14dp"
+        android:background="@drawable/balloon_panel_bg"
+        android:orientation="vertical"
+        android:elevation="20dp"
+        android:visibility="gone"
+        android:clipToPadding="false"
+        android:clipChildren="false">
+
+        <!-- 1. MAIN CONTROL CENTER VIEW -->
+        <LinearLayout
+            android:id="@+id/panelControlCenter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <!-- Row 1: Power (Left) & Wi-Fi + DND (Right) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="130dp"
+                android:orientation="horizontal">
+
+                <!-- Power Off Card (138dp x 130dp) -->
+                <LinearLayout
+                    android:id="@+id/tilePower"
+                    android:layout_width="138dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="18dp"
+                    android:background="@drawable/balloon_item_bg"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/btnControlCenterToggle"
+                    android:nextFocusRight="@+id/tileWifi"
+                    android:nextFocusDown="@+id/tileBluetooth">
+
+                    <ImageView
+                        android:layout_width="52dp"
+                        android:layout_height="54dp"
+                        android:src="@drawable/ic_power"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textPowerTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Power Off"
+                        android:textColor="@color/balloon_text_title"
+                        android:duplicateParentState="true"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium" />
+                </LinearLayout>
+
+                <!-- Right Column: Wi-Fi & Do Not Disturb (138dp x 130dp) -->
+                <LinearLayout
+                    android:layout_width="138dp"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <!-- Wi-Fi Tile (138dp x 60dp) -->
+                    <LinearLayout
+                        android:id="@+id/tileWifi"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/balloon_item_bg"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="10dp"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:clickable="true"
+                        android:nextFocusUp="@+id/btnControlCenterToggle"
+                        android:nextFocusLeft="@+id/tilePower"
+                        android:nextFocusDown="@+id/tileDnd">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_wifi"
+                            android:tint="@color/balloon_icon_blue"
+                            android:duplicateParentState="true" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:orientation="vertical"
+                            android:duplicateParentState="true">
+
+                            <TextView
+                                android:id="@+id/textWifiTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Wi-Fi"
+                                android:textColor="@color/balloon_text_title"
+                                android:duplicateParentState="true"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:fontFamily="sans-serif-medium" />
+
+                            <TextView
+                                android:id="@+id/textWifiSub"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Starlink"
+                                android:textColor="@color/balloon_text_sub"
+                                android:duplicateParentState="true"
+                                android:textSize="12sp"
+                                android:fontFamily="sans-serif"
+                                android:singleLine="true" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Do Not Disturb Tile (138dp x 60dp) -->
+                    <LinearLayout
+                        android:id="@+id/tileDnd"
+                        android:layout_width="match_parent"
+                        android:layout_height="60dp"
+                        android:background="@drawable/balloon_item_bg"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="10dp"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"
+                        android:clickable="true"
+                        android:nextFocusLeft="@+id/tilePower"
+                        android:nextFocusUp="@+id/tileWifi"
+                        android:nextFocusDown="@+id/tileScreensaver">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_moon"
+                            android:tint="@color/balloon_icon_white"
+                            android:duplicateParentState="true" />
+
+                        <TextView
+                            android:id="@+id/textDndTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:text="Do Not&#10;Disturb"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="@color/balloon_text_title"
+                            android:duplicateParentState="true"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:fontFamily="sans-serif-medium" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 2: Audio (Left) & Sleep Timer (Right) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:orientation="horizontal"
+                android:layout_marginTop="18dp"
+                android:layout_marginBottom="18dp">
+
+                <!-- Audio Tile (138dp x 60dp) -->
+                <LinearLayout
+                    android:id="@+id/tileBluetooth"
+                    android:layout_width="138dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="18dp"
+                    android:background="@drawable/balloon_item_bg"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tilePower"
+                    android:nextFocusRight="@+id/tileScreensaver"
+                    android:nextFocusDown="@+id/btnQuickGame">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_airplay"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textAudioTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="Audio"
+                        android:textColor="@color/balloon_text_title"
+                        android:duplicateParentState="true"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium" />
+                </LinearLayout>
+
+                <!-- Sleep Timer Tile (138dp x 60dp) -->
+                <LinearLayout
+                    android:id="@+id/tileScreensaver"
+                    android:layout_width="138dp"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/balloon_item_bg"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="10dp"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tileDnd"
+                    android:nextFocusLeft="@+id/tileBluetooth"
+                    android:nextFocusDown="@+id/btnQuickLock">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_timer"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textSleepTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:text="Sleep&#10;Timer"
+                        android:lineSpacingExtra="2dp"
+                        android:textColor="@color/balloon_text_title"
+                        android:duplicateParentState="true"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 3: 4 Squircle Quick Action Buttons (Game, Accessibility, Restrictions, Search) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:id="@+id/btnQuickGame"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_marginEnd="18dp"
+                    android:background="@drawable/balloon_circle_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tileBluetooth"
+                    android:nextFocusRight="@+id/btnQuickAccessibility">
+
+                    <ImageView
+                        android:layout_width="32dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_gamepad"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/btnQuickAccessibility"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_marginEnd="18dp"
+                    android:background="@drawable/balloon_circle_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tileBluetooth"
+                    android:nextFocusLeft="@+id/btnQuickGame"
+                    android:nextFocusRight="@+id/btnQuickLock">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_accessibility"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/btnQuickLock"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:layout_marginEnd="18dp"
+                    android:background="@drawable/balloon_circle_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tileScreensaver"
+                    android:nextFocusLeft="@+id/btnQuickAccessibility"
+                    android:nextFocusRight="@+id/btnQuickSearch">
+
+                    <ImageView
+                        android:layout_width="25dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_lock_person"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/btnQuickSearch"
+                    android:layout_width="60dp"
+                    android:layout_height="60dp"
+                    android:background="@drawable/balloon_circle_bg"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
+                    android:clickable="true"
+                    android:nextFocusUp="@+id/tileScreensaver"
+                    android:nextFocusLeft="@+id/btnQuickLock">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_search_mini"
+                        android:tint="@color/balloon_icon_white"
+                        android:duplicateParentState="true" />
+                </FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 2. AUDIO / AIRPODS VIEW (Replica of Apple TV Audio Screen) -->
+        <LinearLayout
+            android:id="@+id/panelAudio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- AirPods Header -->
+            <LinearLayout
+                android:id="@+id/tileAudioHeader"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/balloon_item_bg"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_airpods_duo"
+                    android:tint="@color/balloon_icon_white"
+                    android:duplicateParentState="true" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                    android:duplicateParentState="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Melody's AirPods"
+                        android:textColor="@color/balloon_text_title"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="100% 🔋 Conectado"
+                        android:textColor="@color/balloon_text_sub"
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif"
+                        android:duplicateParentState="true" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Thin Divider -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:background="#25FFFFFF" />
+
+            <!-- Noise Control -->
+            <LinearLayout
+                android:id="@+id/tileNoiseControl"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/balloon_item_bg"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_noise_control"
+                    android:tint="@color/balloon_icon_blue"
+                    android:duplicateParentState="true" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                    android:duplicateParentState="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Noise Control"
+                        android:textColor="@color/balloon_text_title"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textNoiseSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Adaptive"
+                        android:textColor="@color/balloon_text_sub"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif"
+                        android:duplicateParentState="true" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Conversation Awareness -->
+            <LinearLayout
+                android:id="@+id/tileConversation"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/balloon_item_bg"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_noise_control"
+                    android:tint="@color/balloon_icon_blue"
+                    android:duplicateParentState="true" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                    android:duplicateParentState="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Conversation Awareness"
+                        android:textColor="@color/balloon_text_title"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textConversationSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="On"
+                        android:textColor="@color/balloon_text_sub"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif"
+                        android:duplicateParentState="true" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Section Label: DOLBY ATMOS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="6dp"
+                android:layout_marginStart="4dp"
+                android:text="🎵  DOLBY ATMOS"
+                android:textColor="#C0D0E0"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- Spatial Audio -->
+            <LinearLayout
+                android:id="@+id/tileSpatialAudio"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/balloon_item_bg"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_spatial_audio"
+                    android:tint="@color/balloon_icon_blue"
+                    android:duplicateParentState="true" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                    android:duplicateParentState="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Spatial Audio"
+                        android:textColor="@color/balloon_text_title"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFamily="sans-serif-medium"
+                        android:duplicateParentState="true" />
+
+                    <TextView
+                        android:id="@+id/textSpatialSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Head Tracked"
+                        android:textColor="@color/balloon_text_sub"
+                        android:textSize="10sp"
+                        android:fontFamily="sans-serif"
+                        android:duplicateParentState="true" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Share Audio -->
+            <LinearLayout
+                android:id="@+id/tileShareAudio"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="6dp"
+                android:background="@drawable/balloon_item_bg"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="12dp"
+                android:focusable="true"
+                android:clickable="true">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_headphones"
+                    android:tint="@color/balloon_icon_white"
+                    android:duplicateParentState="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:text="Share Audio..."
+                    android:textColor="@color/balloon_text_title"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"
+                    android:duplicateParentState="true" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
 </FrameLayout>

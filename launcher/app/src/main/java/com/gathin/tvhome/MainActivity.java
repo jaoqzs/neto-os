@@ -1,11 +1,15 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
+import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
@@ -21,11 +25,15 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
+import android.view.animation.AccelerateInterpolator;
 import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LayoutAnimationController;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -41,13 +49,18 @@ import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 /**
  * tvOS style home: black, a pinned dock row, an app grid, and one glass highlight that springs between tiles.
+ * Includes Apple TV Control Center pill and balloon panel.
  */
 public class MainActivity extends Activity implements AppAdapter.TileListener {
 
@@ -59,26 +72,86 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private AppAdapter adapter;
     private RecyclerView grid;
     private FrameLayout root;
-    private GlassView glass;
-    private View ambient;
-    private TextView heroName;
-    private GradientDrawable ambientGlow;
-    private int ambientColor;
+    private View fullScreenHint;
+    private DockDecoration dockDeco;
+    private boolean isFullScreen = false;
+    private int dockOffset = 0;
     private boolean heroShown;
     private TextView greeting;
-    private TextView btnWifi;
-    private SpringAnimation springX, springY;
-    private float glassTargetX, glassTargetY;
-    private boolean glassShown;
-    // Static so they survive the activity being destroyed while another app is open (low-memory TVs,
-    // or Developer options → "Don't keep activities"); they only reset when the process dies.
+
+    // Top capsule bar controls
+    private TextView capsuleClock;
+    private TextView capsuleDate;
+    private View btnCapsuleHeadphones;
+    private View btnControlCenterToggle;
+    private View btnProfileAvatar;
+
+    private final SimpleDateFormat timeFormat24 = new SimpleDateFormat("HH:mm", Locale.getDefault());
+    private final SimpleDateFormat timeFormat12 = new SimpleDateFormat("h:mm", Locale.getDefault());
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, d MMM", new Locale("pt", "BR"));
+
+    private final Runnable secondClockTicker = new Runnable() {
+        @Override
+        public void run() {
+            updateRealTimeClock();
+            long now = System.currentTimeMillis();
+            long nextTick = 1000L - (now % 1000L);
+            handler.postDelayed(this, nextTick);
+        }
+    };
+
+    private final BroadcastReceiver timeChangeReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            timeFormat24.setTimeZone(TimeZone.getDefault());
+            timeFormat12.setTimeZone(TimeZone.getDefault());
+            dateFormat.setTimeZone(TimeZone.getDefault());
+            updateRealTimeClock();
+        }
+    };
+
+    private void updateRealTimeClock() {
+        Date now = new Date();
+        boolean is24 = DateFormat.is24HourFormat(this);
+        if (capsuleClock != null) {
+            capsuleClock.setText(is24 ? timeFormat24.format(now) : timeFormat12.format(now));
+        }
+        if (capsuleDate != null) {
+            capsuleDate.setText(dateFormat.format(now));
+        }
+    }
+
+    // Control Center balloon views
+    private View ccScrim;
+    private LinearLayout controlCenterPanel;
+    private View panelControlCenter;
+    private View panelAudio;
+    private View tilePower, tileWifi, tileDnd, tileBluetooth, tileScreensaver;
+    private View btnQuickGame, btnQuickAccessibility, btnQuickLock, btnQuickSearch;
+    private TextView textPowerTitle, textWifiTitle, textWifiSub, textDndTitle, textAudioTitle, textSleepTitle;
+
+    // Audio panel views
+    private View tileAudioHeader, tileNoiseControl, tileConversation, tileSpatialAudio, tileShareAudio;
+    private TextView textNoiseSub, textConversationSub, textSpatialSub;
+
+    private static final int TAB_NONE = 0;
+    private static final int TAB_CONTROL_CENTER = 1;
+    private static final int TAB_AUDIO = 2;
+    private int currentTab = TAB_NONE;
+
+    private boolean isDndEnabled = false;
+    private int noiseModeIndex = 0;
+    private final String[] noiseModes = new String[]{"Adaptive", "Desativado", "Cancelamento Ativo"};
+    private boolean conversationOn = true;
+    private int spatialModeIndex = 0;
+    private final String[] spatialModes = new String[]{"Head Tracked", "Fixed", "Off"};
+
+    // Static so they survive the activity being destroyed while another app is open
     private static int lastFocused = 0;
-    /** App of the last focused tile, so focus follows it when the app list changes. */
     private static String lastFocusedKey;
     private float density;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    /** Refreshes the network pill when the connection changes: at boot Wi-Fi often connects after Home is shown. */
     private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
         @Override
         public void onAvailable(@NonNull Network network) {
@@ -108,105 +181,378 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         liveTvPkg = getString(R.string.live_tv_package).trim();
 
         root = findViewById(R.id.root);
-        glass = findViewById(R.id.glass);
-        ambient = findViewById(R.id.ambient);
-        heroName = findViewById(R.id.heroName);
-        ambientGlow = new GradientDrawable();
-        ambientGlow.setGradientType(GradientDrawable.RADIAL_GRADIENT);
-        ambientGlow.setGradientCenter(0.32f, 0.42f);
-        ambient.setBackground(ambientGlow);
-        ambient.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) ->
-                ambientGlow.setGradientRadius((r - l) * 0.62f));
-        greeting = findViewById(R.id.greeting);
-        btnWifi = findViewById(R.id.btnWifi);
+        fullScreenHint = findViewById(R.id.fullScreenHint);
+        if (fullScreenHint != null) {
+            fullScreenHint.setOnClickListener(v -> enterFullScreen(COLUMNS));
+        }
+        greeting = null;
+        btnCapsuleHeadphones = null;
+        btnControlCenterToggle = findViewById(R.id.btnControlCenterToggle);
+        btnProfileAvatar = findViewById(R.id.btnProfileAvatar);
+        ImageView pillAvatar = findViewById(R.id.pillAvatar);
+
+        // Circular clipping for avatar image
+        ViewOutlineProvider circleOutline = new ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        };
+        if (pillAvatar != null) {
+            pillAvatar.setOutlineProvider(circleOutline);
+            pillAvatar.setClipToOutline(true);
+        }
+
+        TextView capsuleUserName = findViewById(R.id.capsuleUserName);
+        if (capsuleUserName != null) {
+            capsuleUserName.setText("Olá, João");
+        }
+
+        capsuleClock = findViewById(R.id.capsuleClock);
+        capsuleDate = findViewById(R.id.capsuleDate);
+        if (capsuleClock != null) {
+            capsuleClock.setOnClickListener(v -> open(new Intent(Settings.ACTION_DATE_SETTINGS)));
+        }
+
+        IntentFilter timeFilter = new IntentFilter();
+        timeFilter.addAction(Intent.ACTION_TIME_TICK);
+        timeFilter.addAction(Intent.ACTION_TIME_CHANGED);
+        timeFilter.addAction(Intent.ACTION_TIMEZONE_CHANGED);
+        registerReceiver(timeChangeReceiver, timeFilter);
 
         grid = findViewById(R.id.grid);
         grid.setLayoutManager(new GridLayoutManager(this, COLUMNS));
         grid.setHasFixedSize(true);
         grid.setItemAnimator(null);
-        grid.addItemDecoration(new DockDecoration(COLUMNS, density));
+        dockDeco = new DockDecoration(COLUMNS, density);
+        grid.addItemDecoration(dockDeco);
         grid.setLayoutAnimation(new LayoutAnimationController(
                 AnimationUtils.loadAnimation(this, R.anim.tile_enter), 0.06f));
         adapter = new AppAdapter(this, this, COLUMNS);
         grid.setAdapter(adapter);
 
-        // tvOS layout: push the dock row to the bottom of the screen; the grid hides below until you press Down.
         grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             int h = b - t;
-            int dockRow = (int) ((145 + 6 + 12) * density);   // item height plus DockDecoration offsets
-            int want = Math.max(0, h - dockRow - (int) (30 * density));
-            if (grid.getPaddingTop() != want) {
-                grid.setPadding(grid.getPaddingLeft(), want, grid.getPaddingRight(), grid.getPaddingBottom());
+            int dockRowHeight = (int) ((101 + 16 + 18) * density);
+            int targetY = Math.max(0, h - dockRowHeight - (int) (24 * density));
+            dockOffset = Math.max(0, targetY - (int) (16 * density));
+            if (!isFullScreen) {
+                grid.setTranslationY(dockOffset);
+                setNonDockAlpha(0f);
             }
         });
 
-        // Keep the glass glued to its tile while the grid scrolls.
-        grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                if (!glassShown) return;
-                glassTargetY -= dy;
-                if (springY.isRunning()) springY.animateToFinalPosition(glassTargetY);
-                else glass.setTranslationY(glassTargetY);
-            }
-        });
+        // Setup Control Center & Audio elements
+        ccScrim = findViewById(R.id.ccScrim);
+        controlCenterPanel = findViewById(R.id.controlCenterPanel);
+        panelControlCenter = findViewById(R.id.panelControlCenter);
+        panelAudio = findViewById(R.id.panelAudio);
 
-        // Liquid feel: soft springs on the highlight's position.
-        springX = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_X);
-        springY = new SpringAnimation(glass, DynamicAnimation.TRANSLATION_Y);
-        for (SpringAnimation s : new SpringAnimation[]{springX, springY}) {
-            s.setSpring(new SpringForce().setStiffness(260f).setDampingRatio(0.58f));
+        // Control Center tiles
+        tilePower = findViewById(R.id.tilePower);
+        tileWifi = findViewById(R.id.tileWifi);
+        tileDnd = findViewById(R.id.tileDnd);
+        tileBluetooth = findViewById(R.id.tileBluetooth);
+        tileScreensaver = findViewById(R.id.tileScreensaver);
+        textPowerTitle = findViewById(R.id.textPowerTitle);
+        textWifiTitle = findViewById(R.id.textWifiTitle);
+        textWifiSub = findViewById(R.id.textWifiSub);
+        textDndTitle = findViewById(R.id.textDndTitle);
+        textAudioTitle = findViewById(R.id.textAudioTitle);
+        textSleepTitle = findViewById(R.id.textSleepTitle);
+
+        btnQuickGame = findViewById(R.id.btnQuickGame);
+        btnQuickAccessibility = findViewById(R.id.btnQuickAccessibility);
+        btnQuickLock = findViewById(R.id.btnQuickLock);
+        btnQuickSearch = findViewById(R.id.btnQuickSearch);
+
+        // Audio panel views
+        tileAudioHeader = findViewById(R.id.tileAudioHeader);
+        tileNoiseControl = findViewById(R.id.tileNoiseControl);
+        tileConversation = findViewById(R.id.tileConversation);
+        tileSpatialAudio = findViewById(R.id.tileSpatialAudio);
+        tileShareAudio = findViewById(R.id.tileShareAudio);
+        textNoiseSub = findViewById(R.id.textNoiseSub);
+        textConversationSub = findViewById(R.id.textConversationSub);
+        textSpatialSub = findViewById(R.id.textSpatialSub);
+
+        // Click listeners on capsule buttons
+        if (btnCapsuleHeadphones != null) {
+            btnCapsuleHeadphones.setOnClickListener(v -> openTab(TAB_AUDIO));
+        }
+        if (btnControlCenterToggle != null) {
+            btnControlCenterToggle.setOnClickListener(v -> openTab(TAB_CONTROL_CENTER));
+        }
+        if (btnProfileAvatar != null) {
+            btnProfileAvatar.setOnClickListener(v -> open(new Intent(Settings.ACTION_SETTINGS)));
         }
 
-        View btnInputs = findViewById(R.id.btnInputs);
-        View btnSettings = findViewById(R.id.btnSettings);
-        btnInputs.setOnClickListener(v -> showInputs());
-        btnWifi.setOnClickListener(v -> open(new Intent(Settings.ACTION_WIFI_SETTINGS)));
-        btnSettings.setOnClickListener(v -> open(new Intent(Settings.ACTION_SETTINGS)));
+        if (ccScrim != null) ccScrim.setOnClickListener(v -> closeControlCenter());
+        if (tilePower != null) tilePower.setOnClickListener(v -> triggerSleep());
+        if (tileWifi != null) tileWifi.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_WIFI_SETTINGS));
+        });
+        if (tileDnd != null) tileDnd.setOnClickListener(v -> toggleDnd());
+        if (tileBluetooth != null) tileBluetooth.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+        });
+        if (tileScreensaver != null) tileScreensaver.setOnClickListener(v -> {
+            closeControlCenter();
+            startScreensaver();
+        });
 
-        // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
-        // jump to a tile far below when there is nothing in that direction.
-        View.OnKeyListener pillKeys = (v, keyCode, event) -> {
-            if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && v.getId() == R.id.btnInputs) return true;
-            return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == R.id.btnSettings;
-        };
-        btnInputs.setOnKeyListener(pillKeys);
-        btnWifi.setOnKeyListener(pillKeys);
-        btnSettings.setOnKeyListener(pillKeys);
+        if (tilePower != null) tilePower.setOnFocusChangeListener((v, hasFocus) -> {
+            if (textPowerTitle != null) textPowerTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
+        });
+        if (tileWifi != null) tileWifi.setOnFocusChangeListener((v, hasFocus) -> {
+            if (textWifiTitle != null) textWifiTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
+            if (textWifiSub != null) textWifiSub.setTextColor(hasFocus ? 0xFF8E8E93 : 0x99FFFFFF);
+        });
+        if (tileDnd != null) tileDnd.setOnFocusChangeListener((v, hasFocus) -> {
+            if (textDndTitle != null) textDndTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
+        });
+        if (tileBluetooth != null) tileBluetooth.setOnFocusChangeListener((v, hasFocus) -> {
+            if (textAudioTitle != null) textAudioTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
+        });
+        if (tileScreensaver != null) tileScreensaver.setOnFocusChangeListener((v, hasFocus) -> {
+            if (textSleepTitle != null) textSleepTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
+        });
 
-        // Hide the glass when focus leaves the tiles.
-        getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
-            boolean onTile = newF != null && newF.getId() == R.id.card;
-            if (!onTile) hideGlass();
+        // Quick squircle buttons
+        if (btnQuickGame != null) btnQuickGame.setOnClickListener(v -> {
+            closeControlCenter();
+            Intent i = getPackageManager().getLeanbackLaunchIntentForPackage("com.google.android.play.games");
+            if (i != null) open(i);
+            else open(new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
+        });
+        if (btnQuickAccessibility != null) btnQuickAccessibility.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        });
+        if (btnQuickLock != null) btnQuickLock.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_SECURITY_SETTINGS));
+        });
+        if (btnQuickSearch != null) btnQuickSearch.setOnClickListener(v -> {
+            closeControlCenter();
+            try {
+                startActivity(new Intent(Intent.ACTION_ASSIST));
+            } catch (Exception e) {
+                open(new Intent(Settings.ACTION_SEARCH_SETTINGS));
+            }
+        });
+
+        // Audio panel tile actions
+        if (tileAudioHeader != null) tileAudioHeader.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+        });
+        if (tileNoiseControl != null) tileNoiseControl.setOnClickListener(v -> {
+            noiseModeIndex = (noiseModeIndex + 1) % noiseModes.length;
+            if (textNoiseSub != null) textNoiseSub.setText(noiseModes[noiseModeIndex]);
+        });
+        if (tileConversation != null) tileConversation.setOnClickListener(v -> {
+            conversationOn = !conversationOn;
+            if (textConversationSub != null) textConversationSub.setText(conversationOn ? "On" : "Off");
+        });
+        if (tileSpatialAudio != null) tileSpatialAudio.setOnClickListener(v -> {
+            spatialModeIndex = (spatialModeIndex + 1) % spatialModes.length;
+            if (textSpatialSub != null) textSpatialSub.setText(spatialModes[spatialModeIndex]);
+        });
+        if (tileShareAudio != null) tileShareAudio.setOnClickListener(v -> {
+            closeControlCenter();
+            open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
         });
 
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         if (cm != null) cm.registerDefaultNetworkCallback(networkCallback);
     }
 
+    // ---- Control Center methods ------------------------------------------------------------------
+
+    private boolean isControlCenterOpen() {
+        return controlCenterPanel != null && controlCenterPanel.getVisibility() == View.VISIBLE;
+    }
+
+    private void openTab(int tab) {
+        if (controlCenterPanel == null) return;
+        if (isControlCenterOpen() && currentTab == tab) {
+            closeControlCenter();
+            return;
+        }
+
+        currentTab = tab;
+        boolean wasOpen = isControlCenterOpen();
+
+        if (!wasOpen) {
+            controlCenterPanel.setVisibility(View.VISIBLE);
+            controlCenterPanel.setPivotY(0f);
+            controlCenterPanel.setScaleX(0.96f);
+            controlCenterPanel.setScaleY(0.96f);
+            controlCenterPanel.setTranslationY(-12f * density);
+            controlCenterPanel.setAlpha(0f);
+            controlCenterPanel.animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .translationY(0f)
+                    .setDuration(220)
+                    .setInterpolator(new DecelerateInterpolator(2.0f))
+                    .start();
+
+            if (ccScrim != null) {
+                ccScrim.setVisibility(View.VISIBLE);
+                ccScrim.setAlpha(0f);
+                ccScrim.animate().alpha(1f).setDuration(220).start();
+            }
+        } else {
+            controlCenterPanel.setAlpha(0.6f);
+            controlCenterPanel.animate().alpha(1f).setDuration(160).start();
+        }
+
+        if (tab == TAB_CONTROL_CENTER) {
+            if (btnControlCenterToggle != null) {
+                btnControlCenterToggle.setActivated(true);
+                btnControlCenterToggle.setNextFocusDownId(R.id.tilePower);
+            }
+            if (btnCapsuleHeadphones != null) {
+                btnCapsuleHeadphones.setActivated(false);
+                btnCapsuleHeadphones.setNextFocusDownId(R.id.tilePower);
+            }
+            if (panelControlCenter != null) panelControlCenter.setVisibility(View.VISIBLE);
+            if (panelAudio != null) panelAudio.setVisibility(View.GONE);
+            if (tilePower != null) {
+                tilePower.post(() -> tilePower.requestFocus());
+            }
+        } else if (tab == TAB_AUDIO) {
+            if (btnCapsuleHeadphones != null) {
+                btnCapsuleHeadphones.setActivated(true);
+                btnCapsuleHeadphones.setNextFocusDownId(R.id.tileAudioHeader);
+            }
+            if (btnControlCenterToggle != null) {
+                btnControlCenterToggle.setActivated(false);
+                btnControlCenterToggle.setNextFocusDownId(R.id.tileAudioHeader);
+            }
+            if (panelControlCenter != null) panelControlCenter.setVisibility(View.GONE);
+            if (panelAudio != null) panelAudio.setVisibility(View.VISIBLE);
+            if (tileAudioHeader != null) {
+                tileAudioHeader.post(() -> tileAudioHeader.requestFocus());
+            }
+        }
+    }
+
+    private void closeControlCenter() {
+        if (!isControlCenterOpen()) return;
+        final int previousTab = currentTab;
+        currentTab = TAB_NONE;
+        if (btnControlCenterToggle != null) {
+            btnControlCenterToggle.setActivated(false);
+            btnControlCenterToggle.setNextFocusDownId(R.id.grid);
+        }
+        if (btnCapsuleHeadphones != null) {
+            btnCapsuleHeadphones.setActivated(false);
+            btnCapsuleHeadphones.setNextFocusDownId(R.id.grid);
+        }
+
+        controlCenterPanel.animate()
+                .scaleX(0.96f)
+                .scaleY(0.96f)
+                .translationY(-12f * density)
+                .alpha(0f)
+                .setDuration(180)
+                .setInterpolator(new AccelerateInterpolator(2.0f))
+                .withEndAction(() -> {
+                    controlCenterPanel.setVisibility(View.GONE);
+                    if (previousTab == TAB_AUDIO && btnCapsuleHeadphones != null) {
+                        btnCapsuleHeadphones.requestFocus();
+                    } else if (btnControlCenterToggle != null) {
+                        btnControlCenterToggle.requestFocus();
+                    }
+                })
+                .start();
+
+        if (ccScrim != null) {
+            ccScrim.animate().alpha(0f).setDuration(180).withEndAction(() -> ccScrim.setVisibility(View.GONE)).start();
+        }
+    }
+
+    private void toggleDnd() {
+        isDndEnabled = !isDndEnabled;
+        if (textDndTitle != null) {
+            textDndTitle.setText(isDndEnabled ? "Do Not\nDisturb (On)" : "Do Not\nDisturb");
+        }
+        try {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm != null && nm.isNotificationPolicyAccessGranted()) {
+                nm.setInterruptionFilter(isDndEnabled ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_ALL);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void triggerSleep() {
+        closeControlCenter();
+        new Thread(() -> {
+            try {
+                Runtime.getRuntime().exec(new String[]{"input", "keyevent", "KEYCODE_SLEEP"}).waitFor();
+            } catch (Exception e) {
+                try {
+                    Runtime.getRuntime().exec(new String[]{"input", "keyevent", "KEYCODE_POWER"});
+                } catch (Exception ignored) {}
+            }
+        }).start();
+    }
+
+    private void startScreensaver() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.setClassName(getPackageName(), "com.gathin.tvhome.ClockDream");
+            startActivity(intent);
+        } catch (Exception e) {
+            open(new Intent(Settings.ACTION_DREAM_SETTINGS));
+        }
+    }
+
+    private void updateCardTextColors(View root, int titleColor, int subColor) {
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                updateCardTextColors(group.getChildAt(i), titleColor, subColor);
+            }
+        } else if (root instanceof TextView) {
+            TextView tv = (TextView) root;
+            if (tv.getId() == R.id.textWifiSub) {
+                tv.setTextColor(subColor);
+            } else {
+                tv.setTextColor(titleColor);
+            }
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
-        glassShown = false;
-        glass.setAlpha(0f);
         heroShown = false;
-        heroName.setAlpha(0f);
-        ambient.setAlpha(0f);
-        // Read these before reload(): rebinding can move focus to the first tile and overwrite them.
+        isFullScreen = false;
+        if (adapter != null) adapter.setFullScreen(false);
+        grid.setTranslationY(dockOffset);
+        setNonDockAlpha(0f);
+        if (dockDeco != null) dockDeco.setBandAlpha(1f);
+        if (fullScreenHint != null) fullScreenHint.setAlpha(1f);
         final String returnKey = lastFocusedKey;
         final int returnSlot = lastFocused;
         adapter.reload();
         grid.scheduleLayoutAnimation();
         updateGreeting();
         updateWifiLabel();
+        handler.removeCallbacks(secondClockTicker);
+        handler.post(secondClockTicker);
         handler.postDelayed(minuteTick, MINUTE_MS);
 
-        // Return to the app we left from, or the same slot if that app is gone. Always refocus: after
-        // reload() the view that holds focus may no longer show the app it had.
         grid.post(() -> {
             int pos = adapter.positionOf(returnKey);
+            if (pos >= COLUMNS) pos = 0;
             focusTile(pos >= 0 ? pos : returnSlot);
         });
     }
@@ -214,140 +560,134 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onPause() {
         super.onPause();
+        handler.removeCallbacks(secondClockTicker);
         handler.removeCallbacks(minuteTick);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        try { unregisterReceiver(timeChangeReceiver); } catch (Exception ignored) {}
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
         if (cm != null) cm.unregisterNetworkCallback(networkCallback);
     }
 
     @Override
     public void onBackPressed() {
+        if (isControlCenterOpen()) {
+            closeControlCenter();
+            return;
+        }
+        if (isFullScreen) {
+            exitFullScreen();
+            return;
+        }
         // Home screen: Back goes nowhere.
     }
-
-    // ---- glass highlight -------------------------------------------------------------------------
 
     @Override
     public void onTileFocused(int position, View card) {
         lastFocused = position;
         lastFocusedKey = adapter.keyAt(position);
-        // Tile rect in root coordinates, using layout positions (ignores the scale animation).
-        Rect r = new Rect(0, 0, card.getWidth(), card.getHeight());
-        root.offsetDescendantRectToMyCoords(card, r);
-        float pad = 6f * density;        // matches GlassView's glow inset
-        float w = card.getWidth() * AppAdapter.FOCUS_SCALE + 2 * pad;
-        float h = card.getHeight() * AppAdapter.FOCUS_SCALE + 2 * pad;
-        float x = r.exactCenterX() - w / 2f;
-        float y = r.exactCenterY() - h / 2f;
 
-        ViewGroup.LayoutParams lp = glass.getLayoutParams();
-        if (lp.width != (int) w || lp.height != (int) h) {
-            lp.width = (int) w;
-            lp.height = (int) h;
-            glass.setLayoutParams(lp);
-            glass.setRadius(16f * density * AppAdapter.FOCUS_SCALE + pad);
-        }
-        glassTargetX = x;
-        glassTargetY = y;
-        if (!glassShown) {
-            springX.cancel();
-            springY.cancel();
-            glass.setTranslationX(x);
-            glass.setTranslationY(y);
-            glass.animate().alpha(1f).setDuration(180).start();
-            glassShown = true;
-        } else {
-            springX.animateToFinalPosition(x);
-            springY.animateToFinalPosition(y);
-        }
-        View item = (View) card.getParent();
-        if (position < COLUMNS) {
-            // Dock: park it at the bottom of the screen and show the top shelf for this app.
-            int decoratedTop = item.getTop() - (int) (6 * density);
-            int dy = decoratedTop - grid.getPaddingTop();
-            if (Math.abs(dy) > 1) grid.smoothScrollBy(0, dy);
-            showHero(position, r.top - dy);
-        } else {
-            hideHero();
-            // Scroll just enough so the whole glass (not only the tile) is visible.
-            Rect want = new Rect(0, -(int) pad * 2, item.getWidth(), item.getHeight() + (int) pad);
-            grid.requestChildRectangleOnScreen(item, want, false);
-        }
-    }
-
-    // ---- top shelf -------------------------------------------------------------------------------
-
-    private void showHero(int position, float dockTopInRoot) {
-        String label = adapter.labelAt(position);
-        int color = adapter.ambientColorAt(position);
-        float y = dockTopInRoot - 14 * density - 26 * density - heroName.getHeight();
-        boolean changed = !label.contentEquals(heroName.getText());
-
-        if (!heroShown) {
-            heroName.setText(label);
-            heroName.setY(y);
-            heroName.setTranslationX(0f);
-            heroName.animate().alpha(1f).setDuration(260).start();
-            setAmbient(color);
-            ambient.animate().alpha(1f).setDuration(600).start();
-            heroShown = true;
-        } else if (changed) {
-            heroName.animate().alpha(0f).translationX(-12 * density).setDuration(120).withEndAction(() -> {
-                heroName.setText(label);
-                heroName.setY(y);
-                heroName.setTranslationX(12 * density);
-                heroName.animate().alpha(1f).translationX(0f).setDuration(200).start();
-            }).start();
-            if (color != ambientColor) {
-                ambient.animate().alpha(0.35f).setDuration(200).withEndAction(() -> {
-                    setAmbient(color);
-                    ambient.animate().alpha(1f).setDuration(500).start();
-                }).start();
+        if (fullScreenHint != null) {
+            if (!isFullScreen && position < COLUMNS) {
+                fullScreenHint.animate().alpha(1f).setDuration(200).start();
+            } else {
+                fullScreenHint.animate().alpha(0f).setDuration(160).start();
             }
-        } else {
-            heroName.setY(y);
         }
     }
 
-    private void setAmbient(int color) {
-        ambientColor = color;
-        int c = color & 0x00FFFFFF;
-        ambientGlow.setColors(new int[]{0x5C000000 | c, 0x26000000 | c, 0x00000000 | c});
+    private void setNonDockAlpha(float alpha) {
+        if (grid == null) return;
+        for (int i = 0; i < grid.getChildCount(); i++) {
+            View child = grid.getChildAt(i);
+            int pos = grid.getChildAdapterPosition(child);
+            if (pos >= COLUMNS) {
+                child.setAlpha(alpha);
+            }
+        }
     }
 
-    private void hideHero() {
-        if (!heroShown) return;
-        heroShown = false;
-        heroName.animate().alpha(0f).setDuration(160).start();
-        ambient.animate().alpha(0f).setDuration(300).start();
+    private void enterFullScreen(int targetPos) {
+        if (isFullScreen) {
+            focusTile(targetPos);
+            return;
+        }
+        isFullScreen = true;
+        if (adapter != null) adapter.setFullScreen(true);
+        if (dockDeco != null) {
+            dockDeco.setBandAlpha(0f);
+            grid.invalidate();
+        }
+        if (fullScreenHint != null) {
+            fullScreenHint.animate().alpha(0f).setDuration(160).start();
+        }
+        setNonDockAlpha(1f);
+        grid.animate()
+                .translationY(0f)
+                .setDuration(300)
+                .setInterpolator(new DecelerateInterpolator(1.8f))
+                .withEndAction(() -> focusTile(targetPos))
+                .start();
     }
 
-    private void hideGlass() {
-        if (!glassShown) return;
-        glassShown = false;
-        glass.animate().alpha(0f).setDuration(160).start();
+    private void exitFullScreen() {
+        if (!isFullScreen) return;
+        isFullScreen = false;
+        if (adapter != null) adapter.setFullScreen(false);
+        if (dockDeco != null) {
+            dockDeco.setBandAlpha(1f);
+            grid.invalidate();
+        }
+        if (fullScreenHint != null) {
+            fullScreenHint.animate().alpha(1f).setDuration(240).start();
+        }
+        int dockTarget = Math.max(0, Math.min(lastFocused % COLUMNS, COLUMNS - 1));
+        grid.scrollToPosition(0);
+        grid.animate()
+                .translationY(dockOffset)
+                .setDuration(300)
+                .setInterpolator(new DecelerateInterpolator(1.8f))
+                .withEndAction(() -> {
+                    setNonDockAlpha(0f);
+                    focusTile(dockTarget);
+                })
+                .start();
     }
-
-    // ---- navigation ------------------------------------------------------------------------------
 
     @Override
     public boolean onTileVerticalKey(int position, int keyCode) {
         int count = adapter.getItemCount();
-        int target;
-        if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
-            target = position - COLUMNS;
-        } else {
+        if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+            if (position < COLUMNS && !isFullScreen) {
+                int target = Math.min(position + COLUMNS, count - 1);
+                enterFullScreen(target);
+                return true;
+            }
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
-            if (position >= lastRowStart) return true;     // already on the last row: stay put
-            target = Math.min(position + COLUMNS, count - 1);
+            if (position >= lastRowStart) return true;
+            int target = Math.min(position + COLUMNS, count - 1);
+            focusTile(target);
+            return true;
+        } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+            if (position < COLUMNS) {
+                if (isFullScreen) {
+                    exitFullScreen();
+                    return true;
+                }
+                if (btnControlCenterToggle != null) {
+                    btnControlCenterToggle.requestFocus();
+                    return true;
+                }
+                return false;
+            }
+            int target = position - COLUMNS;
+            focusTile(target);
+            return true;
         }
-        focusTile(target);
-        return true;
+        return false;
     }
 
     private void focusTile(int position) {
@@ -356,12 +696,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         if (vh != null) {
             View card = vh.itemView.findViewById(R.id.card);
-            // Already focused (e.g. back from an app): no focus change fires, so restore the glass by hand.
             if (card.isFocused()) onTileFocused(pos, card);
             else card.requestFocus();
             return;
         }
-        // Not laid out yet: scroll there, then focus once the scroll settles.
         grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView rv, int newState) {
@@ -385,10 +723,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else if (hour < 17) res = R.string.good_afternoon;
         else if (hour < 22) res = R.string.good_evening;
         else res = R.string.good_night;
-        greeting.setText(res);
+        if (greeting != null) greeting.setText(res);
     }
 
-    /** Shows the Wi-Fi network name on the button when we can read it, otherwise the connection type. */
+    /** Shows the Wi-Fi network name on the status pill and control center. */
     private void updateWifiLabel() {
         String text = getString(R.string.wifi);
         try {
@@ -410,7 +748,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         } catch (Exception ignored) {
         }
-        btnWifi.setText(text);
+        if (textWifiSub != null) textWifiSub.setText(text);
     }
 
     private void open(Intent i) {
@@ -422,33 +760,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    /** Dropdown menu under the Inputs pill: HDMI ports (with connection state), AV and Live TV. */
+    /** Dropdown menu under Inputs: HDMI ports, AV and Live TV. */
     private void showInputs() {
-        View anchor = findViewById(R.id.btnInputs);
+        View anchor = btnControlCenterToggle != null ? btnControlCenterToggle : root;
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
 
-        // Compact: as wide as the Inputs pill (a touch wider so "HDMI 1" fits), hanging right below it.
-        int width = Math.max(anchor.getWidth(), (int) (150 * density));
+        int width = Math.max(anchor.getWidth(), (int) (180 * density));
         final PopupWindow popup = new PopupWindow(panel, width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
-        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));   // needed for Back to dismiss
+        popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
-        popup.setElevation(0f);
+        popup.setElevation(8f * density);
 
         TvInputManager tim = (TvInputManager) getSystemService(TV_INPUT_SERVICE);
         boolean sawNonHdmi = false;
         String tunerId = null;
         if (tim != null) {
             List<TvInputInfo> inputs = new ArrayList<>(tim.getTvInputList());
-            // HDMI ports first in port order, then AV and the rest.
             Collections.sort(inputs, (a, b) -> {
                 boolean ha = a.getType() == TvInputInfo.TYPE_HDMI, hb = b.getType() == TvInputInfo.TYPE_HDMI;
                 if (ha != hb) return ha ? -1 : 1;
                 return String.valueOf(a.loadLabel(this)).compareToIgnoreCase(String.valueOf(b.loadLabel(this)));
             });
-            // Some TVs (Sony) report every HDMI port as connected whether or not anything is plugged in,
-            // so drop the HDMI status then. A TV with every port really in use loses it too.
             int hdmiPorts = 0, hdmiConnected = 0;
             for (TvInputInfo info : inputs) {
                 if (!info.isPassthroughInput() || info.getType() != TvInputInfo.TYPE_HDMI) continue;
@@ -492,18 +826,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
 
-        // Fit the widest row: TVs that report a status on every port (Sony) would otherwise squeeze the names out.
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max(width, panel.getMeasuredWidth()));
 
-        // Drop in: fade and unfold from the top edge.
         panel.setAlpha(0f);
         panel.setPivotY(0f);
         panel.setScaleY(0.92f);
         panel.setTranslationY(-8 * density);
         popup.showAsDropDown(anchor, 0, (int) (10 * density), Gravity.START);
         panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(220)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
+                .setInterpolator(new DecelerateInterpolator(1.6f)).start();
         rows.getChildAt(0).requestFocus();
     }
 
@@ -522,8 +854,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         ((TextView) row.findViewById(R.id.title)).setText(title);
         TextView status = row.findViewById(R.id.status);
         View dot = row.findViewById(R.id.dot);
-        // This TV reports "standby" for every port whether or not something is plugged in, so only
-        // definite states are shown.
         if (state == TvInputManager.INPUT_STATE_CONNECTED) {
             status.setText(R.string.connected);
             dot.setVisibility(View.VISIBLE);

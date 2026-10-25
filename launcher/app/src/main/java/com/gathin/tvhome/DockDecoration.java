@@ -18,13 +18,23 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
+    private float bandAlpha = 1f;
+
     DockDecoration(int dockSize, float density) {
         this.dockSize = dockSize;
         this.density = density;
-        band.setColor(0xFF141416);
+        band.setColor(0x7518181C);
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
-        edge.setColor(0x1FFFFFFF);
+        edge.setColor(0x35FFFFFF);
+    }
+
+    public void setBandAlpha(float alpha) {
+        this.bandAlpha = Math.max(0f, Math.min(1f, alpha));
+    }
+
+    public float getBandAlpha() {
+        return bandAlpha;
     }
 
     @Override
@@ -39,6 +49,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDraw(@NonNull Canvas c, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
+        if (bandAlpha <= 0.01f) return;
         boolean any = false;
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);
@@ -61,6 +72,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         float pad = 14 * density;
         rect.inset(-pad, -pad);
         float radius = 26 * density;
+        band.setAlpha((int) (0x75 * bandAlpha));
+        edge.setAlpha((int) (0x35 * bandAlpha));
         c.drawRoundRect(rect, radius, radius, band);
         c.drawRoundRect(rect, radius, radius, edge);
     }
