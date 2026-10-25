@@ -64,13 +64,13 @@ Descubra o endereço IP da sua TV (em *Configurações > Rede > Wi-Fi*) e autori
 
 No **Windows (PowerShell)**:
 ```powershell
-$env:TV_HOST = "192.168.1.50"   # Substitua pelo IP da sua TV
+$env:TV_HOST = "192.168.X.X"   # Exemplo: substitua pelo IP local da sua TV (ex: 192.168.1.100)
 python tools/tv.py --probe
 ```
 
 No **Linux / macOS (Bash)**:
 ```bash
-export TV_HOST=192.168.1.50
+export TV_HOST="192.168.X.X"   # Exemplo: substitua pelo IP local da sua TV
 python3 tools/tv.py --probe
 ```
 
