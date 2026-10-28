@@ -64,7 +64,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
         }
     }
 
-    static final float FOCUS_SCALE = 1.10f;
+    static final float FOCUS_SCALE = 1.08f;
 
     private final Context ctx;
     private final TileListener listener;
@@ -273,7 +273,7 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
             name = v.findViewById(R.id.name);
 
             final float density = v.getResources().getDisplayMetrics().density;
-            final float radius = density * 16f;
+            final float radius = density * 20f;
             card.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
@@ -291,9 +291,12 @@ public class AppAdapter extends RecyclerView.Adapter<AppAdapter.Holder> {
 
             card.setOnFocusChangeListener((view, focused) -> {
                 float s = focused ? FOCUS_SCALE : 1.0f;
+                // tvOS style lift: the focused card grows, rises and casts a soft shadow.
                 view.animate().scaleX(s).scaleY(s)
-                        .setDuration(focused ? 260 : 180)
-                        .setInterpolator(new OvershootInterpolator(focused ? 1.6f : 0f))
+                        .translationZ(focused ? density * 18f : 0f)
+                        .translationY(focused ? -density * 3f : 0f)
+                        .setDuration(focused ? 320 : 220)
+                        .setInterpolator(new OvershootInterpolator(focused ? 0.8f : 0f))
                         .start();
                 int pos = getBindingAdapterPosition();
                 if (pos >= dockSize) {

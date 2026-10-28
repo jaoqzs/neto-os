@@ -71,7 +71,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         if (!any) return;
         float pad = 14 * density;
         rect.inset(-pad, -pad);
-        float radius = 26 * density;
+        float radius = 32 * density;
         band.setAlpha((int) (0x75 * bandAlpha));
         edge.setAlpha((int) (0x35 * bandAlpha));
         c.drawRoundRect(rect, radius, radius, band);

@@ -1,7 +1,6 @@
 package com.gathin.tvhome;
 
 import android.app.Activity;
-import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -82,7 +81,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     // Top capsule bar controls
     private TextView capsuleClock;
     private TextView capsuleDate;
-    private View btnCapsuleHeadphones;
     private View btnControlCenterToggle;
     private View btnProfileAvatar;
 
@@ -125,26 +123,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private View ccScrim;
     private LinearLayout controlCenterPanel;
     private View panelControlCenter;
-    private View panelAudio;
-    private View tilePower, tileWifi, tileDnd, tileBluetooth, tileScreensaver;
-    private View btnQuickGame, btnQuickAccessibility, btnQuickLock, btnQuickSearch;
-    private TextView textPowerTitle, textWifiTitle, textWifiSub, textDndTitle, textAudioTitle, textSleepTitle;
-
-    // Audio panel views
-    private View tileAudioHeader, tileNoiseControl, tileConversation, tileSpatialAudio, tileShareAudio;
-    private TextView textNoiseSub, textConversationSub, textSpatialSub;
-
-    private static final int TAB_NONE = 0;
-    private static final int TAB_CONTROL_CENTER = 1;
-    private static final int TAB_AUDIO = 2;
-    private int currentTab = TAB_NONE;
-
-    private boolean isDndEnabled = false;
-    private int noiseModeIndex = 0;
-    private final String[] noiseModes = new String[]{"Adaptive", "Desativado", "Cancelamento Ativo"};
-    private boolean conversationOn = true;
-    private int spatialModeIndex = 0;
-    private final String[] spatialModes = new String[]{"Head Tracked", "Fixed", "Off"};
+    private View tileInputs, tileWifi, tileBluetooth, tileScreensaver, tileSettings, tileAccessibility, tileSearch, tileApps;
+    private TextView textWifiTitle, textWifiSub;
 
     // Static so they survive the activity being destroyed while another app is open
     private static int lastFocused = 0;
@@ -186,7 +166,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             fullScreenHint.setOnClickListener(v -> enterFullScreen(COLUMNS));
         }
         greeting = null;
-        btnCapsuleHeadphones = null;
         btnControlCenterToggle = findViewById(R.id.btnControlCenterToggle);
         btnProfileAvatar = findViewById(R.id.btnProfileAvatar);
         ImageView pillAvatar = findViewById(R.id.pillAvatar);
@@ -242,128 +221,68 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
 
-        // Setup Control Center & Audio elements
+        // Control Center: every tile maps to something the TV can really do.
         ccScrim = findViewById(R.id.ccScrim);
         controlCenterPanel = findViewById(R.id.controlCenterPanel);
         panelControlCenter = findViewById(R.id.panelControlCenter);
-        panelAudio = findViewById(R.id.panelAudio);
 
-        // Control Center tiles
-        tilePower = findViewById(R.id.tilePower);
+        tileInputs = findViewById(R.id.tileInputs);
         tileWifi = findViewById(R.id.tileWifi);
-        tileDnd = findViewById(R.id.tileDnd);
         tileBluetooth = findViewById(R.id.tileBluetooth);
         tileScreensaver = findViewById(R.id.tileScreensaver);
-        textPowerTitle = findViewById(R.id.textPowerTitle);
-        textWifiTitle = findViewById(R.id.textWifiTitle);
-        textWifiSub = findViewById(R.id.textWifiSub);
-        textDndTitle = findViewById(R.id.textDndTitle);
-        textAudioTitle = findViewById(R.id.textAudioTitle);
-        textSleepTitle = findViewById(R.id.textSleepTitle);
+        tileSettings = findViewById(R.id.tileSettings);
+        tileAccessibility = findViewById(R.id.tileAccessibility);
+        tileSearch = findViewById(R.id.tileSearch);
+        tileApps = findViewById(R.id.tileApps);
+        textWifiTitle = findViewById(R.id.tileWifiTitle);
+        textWifiSub = findViewById(R.id.tileWifiSub);
 
-        btnQuickGame = findViewById(R.id.btnQuickGame);
-        btnQuickAccessibility = findViewById(R.id.btnQuickAccessibility);
-        btnQuickLock = findViewById(R.id.btnQuickLock);
-        btnQuickSearch = findViewById(R.id.btnQuickSearch);
-
-        // Audio panel views
-        tileAudioHeader = findViewById(R.id.tileAudioHeader);
-        tileNoiseControl = findViewById(R.id.tileNoiseControl);
-        tileConversation = findViewById(R.id.tileConversation);
-        tileSpatialAudio = findViewById(R.id.tileSpatialAudio);
-        tileShareAudio = findViewById(R.id.tileShareAudio);
-        textNoiseSub = findViewById(R.id.textNoiseSub);
-        textConversationSub = findViewById(R.id.textConversationSub);
-        textSpatialSub = findViewById(R.id.textSpatialSub);
-
-        // Click listeners on capsule buttons
-        if (btnCapsuleHeadphones != null) {
-            btnCapsuleHeadphones.setOnClickListener(v -> openTab(TAB_AUDIO));
-        }
         if (btnControlCenterToggle != null) {
-            btnControlCenterToggle.setOnClickListener(v -> openTab(TAB_CONTROL_CENTER));
+            btnControlCenterToggle.setOnClickListener(v -> {
+                if (isControlCenterOpen()) closeControlCenter();
+                else openControlCenter();
+            });
         }
         if (btnProfileAvatar != null) {
             btnProfileAvatar.setOnClickListener(v -> open(new Intent(Settings.ACTION_SETTINGS)));
         }
 
         if (ccScrim != null) ccScrim.setOnClickListener(v -> closeControlCenter());
-        if (tilePower != null) tilePower.setOnClickListener(v -> triggerSleep());
-        if (tileWifi != null) tileWifi.setOnClickListener(v -> {
+        tileInputs.setOnClickListener(v -> {
+            closeControlCenter();
+            showInputs();
+        });
+        tileWifi.setOnClickListener(v -> {
             closeControlCenter();
             open(new Intent(Settings.ACTION_WIFI_SETTINGS));
         });
-        if (tileDnd != null) tileDnd.setOnClickListener(v -> toggleDnd());
-        if (tileBluetooth != null) tileBluetooth.setOnClickListener(v -> {
+        tileBluetooth.setOnClickListener(v -> {
             closeControlCenter();
             open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
         });
-        if (tileScreensaver != null) tileScreensaver.setOnClickListener(v -> {
+        tileScreensaver.setOnClickListener(v -> {
             closeControlCenter();
             startScreensaver();
         });
-
-        if (tilePower != null) tilePower.setOnFocusChangeListener((v, hasFocus) -> {
-            if (textPowerTitle != null) textPowerTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
-        });
-        if (tileWifi != null) tileWifi.setOnFocusChangeListener((v, hasFocus) -> {
-            if (textWifiTitle != null) textWifiTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
-            if (textWifiSub != null) textWifiSub.setTextColor(hasFocus ? 0xFF8E8E93 : 0x99FFFFFF);
-        });
-        if (tileDnd != null) tileDnd.setOnFocusChangeListener((v, hasFocus) -> {
-            if (textDndTitle != null) textDndTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
-        });
-        if (tileBluetooth != null) tileBluetooth.setOnFocusChangeListener((v, hasFocus) -> {
-            if (textAudioTitle != null) textAudioTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
-        });
-        if (tileScreensaver != null) tileScreensaver.setOnFocusChangeListener((v, hasFocus) -> {
-            if (textSleepTitle != null) textSleepTitle.setTextColor(hasFocus ? Color.BLACK : 0xCCFFFFFF);
-        });
-
-        // Quick squircle buttons
-        if (btnQuickGame != null) btnQuickGame.setOnClickListener(v -> {
+        tileSettings.setOnClickListener(v -> {
             closeControlCenter();
-            Intent i = getPackageManager().getLeanbackLaunchIntentForPackage("com.google.android.play.games");
-            if (i != null) open(i);
-            else open(new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
+            open(new Intent(Settings.ACTION_SETTINGS));
         });
-        if (btnQuickAccessibility != null) btnQuickAccessibility.setOnClickListener(v -> {
+        tileAccessibility.setOnClickListener(v -> {
             closeControlCenter();
             open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         });
-        if (btnQuickLock != null) btnQuickLock.setOnClickListener(v -> {
-            closeControlCenter();
-            open(new Intent(Settings.ACTION_SECURITY_SETTINGS));
-        });
-        if (btnQuickSearch != null) btnQuickSearch.setOnClickListener(v -> {
+        tileSearch.setOnClickListener(v -> {
             closeControlCenter();
             try {
-                startActivity(new Intent(Intent.ACTION_ASSIST));
+                startActivity(new Intent(Intent.ACTION_ASSIST).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Exception e) {
                 open(new Intent(Settings.ACTION_SEARCH_SETTINGS));
             }
         });
-
-        // Audio panel tile actions
-        if (tileAudioHeader != null) tileAudioHeader.setOnClickListener(v -> {
+        tileApps.setOnClickListener(v -> {
             closeControlCenter();
-            open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
-        });
-        if (tileNoiseControl != null) tileNoiseControl.setOnClickListener(v -> {
-            noiseModeIndex = (noiseModeIndex + 1) % noiseModes.length;
-            if (textNoiseSub != null) textNoiseSub.setText(noiseModes[noiseModeIndex]);
-        });
-        if (tileConversation != null) tileConversation.setOnClickListener(v -> {
-            conversationOn = !conversationOn;
-            if (textConversationSub != null) textConversationSub.setText(conversationOn ? "On" : "Off");
-        });
-        if (tileSpatialAudio != null) tileSpatialAudio.setOnClickListener(v -> {
-            spatialModeIndex = (spatialModeIndex + 1) % spatialModes.length;
-            if (textSpatialSub != null) textSpatialSub.setText(spatialModes[spatialModeIndex]);
-        });
-        if (tileShareAudio != null) tileShareAudio.setOnClickListener(v -> {
-            closeControlCenter();
-            open(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+            open(new Intent(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS));
         });
 
         ConnectivityManager cm = getSystemService(ConnectivityManager.class);
@@ -376,84 +295,40 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         return controlCenterPanel != null && controlCenterPanel.getVisibility() == View.VISIBLE;
     }
 
-    private void openTab(int tab) {
-        if (controlCenterPanel == null) return;
-        if (isControlCenterOpen() && currentTab == tab) {
-            closeControlCenter();
-            return;
+    private void openControlCenter() {
+        if (controlCenterPanel == null || isControlCenterOpen()) return;
+        controlCenterPanel.setVisibility(View.VISIBLE);
+        controlCenterPanel.setPivotY(0f);
+        controlCenterPanel.setScaleX(0.96f);
+        controlCenterPanel.setScaleY(0.96f);
+        controlCenterPanel.setTranslationY(-12f * density);
+        controlCenterPanel.setAlpha(0f);
+        controlCenterPanel.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .translationY(0f)
+                .setDuration(220)
+                .setInterpolator(new DecelerateInterpolator(2.0f))
+                .start();
+
+        if (ccScrim != null) {
+            ccScrim.setVisibility(View.VISIBLE);
+            ccScrim.setAlpha(0f);
+            ccScrim.animate().alpha(1f).setDuration(220).start();
         }
-
-        currentTab = tab;
-        boolean wasOpen = isControlCenterOpen();
-
-        if (!wasOpen) {
-            controlCenterPanel.setVisibility(View.VISIBLE);
-            controlCenterPanel.setPivotY(0f);
-            controlCenterPanel.setScaleX(0.96f);
-            controlCenterPanel.setScaleY(0.96f);
-            controlCenterPanel.setTranslationY(-12f * density);
-            controlCenterPanel.setAlpha(0f);
-            controlCenterPanel.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .translationY(0f)
-                    .setDuration(220)
-                    .setInterpolator(new DecelerateInterpolator(2.0f))
-                    .start();
-
-            if (ccScrim != null) {
-                ccScrim.setVisibility(View.VISIBLE);
-                ccScrim.setAlpha(0f);
-                ccScrim.animate().alpha(1f).setDuration(220).start();
-            }
-        } else {
-            controlCenterPanel.setAlpha(0.6f);
-            controlCenterPanel.animate().alpha(1f).setDuration(160).start();
+        if (btnControlCenterToggle != null) {
+            btnControlCenterToggle.setActivated(true);
+            btnControlCenterToggle.setNextFocusDownId(R.id.tileInputs);
         }
-
-        if (tab == TAB_CONTROL_CENTER) {
-            if (btnControlCenterToggle != null) {
-                btnControlCenterToggle.setActivated(true);
-                btnControlCenterToggle.setNextFocusDownId(R.id.tilePower);
-            }
-            if (btnCapsuleHeadphones != null) {
-                btnCapsuleHeadphones.setActivated(false);
-                btnCapsuleHeadphones.setNextFocusDownId(R.id.tilePower);
-            }
-            if (panelControlCenter != null) panelControlCenter.setVisibility(View.VISIBLE);
-            if (panelAudio != null) panelAudio.setVisibility(View.GONE);
-            if (tilePower != null) {
-                tilePower.post(() -> tilePower.requestFocus());
-            }
-        } else if (tab == TAB_AUDIO) {
-            if (btnCapsuleHeadphones != null) {
-                btnCapsuleHeadphones.setActivated(true);
-                btnCapsuleHeadphones.setNextFocusDownId(R.id.tileAudioHeader);
-            }
-            if (btnControlCenterToggle != null) {
-                btnControlCenterToggle.setActivated(false);
-                btnControlCenterToggle.setNextFocusDownId(R.id.tileAudioHeader);
-            }
-            if (panelControlCenter != null) panelControlCenter.setVisibility(View.GONE);
-            if (panelAudio != null) panelAudio.setVisibility(View.VISIBLE);
-            if (tileAudioHeader != null) {
-                tileAudioHeader.post(() -> tileAudioHeader.requestFocus());
-            }
-        }
+        if (tileInputs != null) tileInputs.post(() -> tileInputs.requestFocus());
     }
 
     private void closeControlCenter() {
         if (!isControlCenterOpen()) return;
-        final int previousTab = currentTab;
-        currentTab = TAB_NONE;
         if (btnControlCenterToggle != null) {
             btnControlCenterToggle.setActivated(false);
             btnControlCenterToggle.setNextFocusDownId(R.id.grid);
-        }
-        if (btnCapsuleHeadphones != null) {
-            btnCapsuleHeadphones.setActivated(false);
-            btnCapsuleHeadphones.setNextFocusDownId(R.id.grid);
         }
 
         controlCenterPanel.animate()
@@ -465,43 +340,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 .setInterpolator(new AccelerateInterpolator(2.0f))
                 .withEndAction(() -> {
                     controlCenterPanel.setVisibility(View.GONE);
-                    if (previousTab == TAB_AUDIO && btnCapsuleHeadphones != null) {
-                        btnCapsuleHeadphones.requestFocus();
-                    } else if (btnControlCenterToggle != null) {
-                        btnControlCenterToggle.requestFocus();
-                    }
+                    if (btnControlCenterToggle != null) btnControlCenterToggle.requestFocus();
                 })
                 .start();
 
         if (ccScrim != null) {
             ccScrim.animate().alpha(0f).setDuration(180).withEndAction(() -> ccScrim.setVisibility(View.GONE)).start();
         }
-    }
-
-    private void toggleDnd() {
-        isDndEnabled = !isDndEnabled;
-        if (textDndTitle != null) {
-            textDndTitle.setText(isDndEnabled ? "Do Not\nDisturb (On)" : "Do Not\nDisturb");
-        }
-        try {
-            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            if (nm != null && nm.isNotificationPolicyAccessGranted()) {
-                nm.setInterruptionFilter(isDndEnabled ? NotificationManager.INTERRUPTION_FILTER_NONE : NotificationManager.INTERRUPTION_FILTER_ALL);
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private void triggerSleep() {
-        closeControlCenter();
-        new Thread(() -> {
-            try {
-                Runtime.getRuntime().exec(new String[]{"input", "keyevent", "KEYCODE_SLEEP"}).waitFor();
-            } catch (Exception e) {
-                try {
-                    Runtime.getRuntime().exec(new String[]{"input", "keyevent", "KEYCODE_POWER"});
-                } catch (Exception ignored) {}
-            }
-        }).start();
     }
 
     private void startScreensaver() {
@@ -511,22 +356,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             startActivity(intent);
         } catch (Exception e) {
             open(new Intent(Settings.ACTION_DREAM_SETTINGS));
-        }
-    }
-
-    private void updateCardTextColors(View root, int titleColor, int subColor) {
-        if (root instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) root;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                updateCardTextColors(group.getChildAt(i), titleColor, subColor);
-            }
-        } else if (root instanceof TextView) {
-            TextView tv = (TextView) root;
-            if (tv.getId() == R.id.textWifiSub) {
-                tv.setTextColor(subColor);
-            } else {
-                tv.setTextColor(titleColor);
-            }
         }
     }
 

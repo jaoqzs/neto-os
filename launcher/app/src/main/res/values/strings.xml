@@ -19,5 +19,11 @@
     <string name="not_available">Não disponível nesta TV</string>
     <string name="cant_open">Não foi possível abrir %1$s</string>
     <string name="date_format">EEEE, d \'de\' MMMM</string>
+    <string name="cc_inputs">Entradas</string>
+    <string name="cc_bluetooth">Bluetooth</string>
+    <string name="cc_screensaver">Descanso</string>
+    <string name="cc_accessibility">Acessibilidade</string>
+    <string name="cc_search">Busca</string>
+    <string name="cc_apps">Aplicativos</string>
     <string name="dream_name">Relógio Neto OS</string>
 </resources>
